@@ -175,6 +175,6 @@ faculty-eval-pro/
 
 <div align="center">
 
-Made for students, by students.
+Made for students, by **A.Alvi**
 
 </div>

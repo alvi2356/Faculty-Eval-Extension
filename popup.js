@@ -45,7 +45,7 @@ const TEACHER_FEEDBACK = {
   },
   constructive: {
     high: [
-      "The professor shows great potential and strong subject knowledge. Incorporating more diverse teaching methods — such as group discussions and case studies — would benefit different learning styles and further elevate the course.",
+      "The professor shows great potential and strong subject knowledge. Incorporating more diverse teaching methods such as group discussions and case studies would benefit different learning styles and further elevate the course.",
       "Overall a positive teaching experience. One area for growth is providing more timely feedback on assignments. Clearer rubrics and more frequent progress check-ins would boost student confidence.",
     ],
     mid: [
@@ -142,14 +142,10 @@ const COURSE_FEEDBACK = {
 //  Helpers
 // ═══════════════════════════════════════════════════════════════
 
-function getLevel(rating) {
-  if (rating >= 4.0) return "high";
-  if (rating >= 2.5) return "mid";
-  return "low";
-}
+function getLevel(r) { return r >= 4.0 ? "high" : r >= 2.5 ? "mid" : "low"; }
 
 function pickFeedback(bank, tone, rating) {
-  const t = bank[tone] || bank.positive;
+  const t    = bank[tone] || bank.positive;
   const pool = t[getLevel(rating)] || t.high;
   return pool[Math.floor(Math.random() * pool.length)];
 }
@@ -163,49 +159,104 @@ let teacherTone   = "positive";
 let courseTone    = "positive";
 let savedTeacher  = [];
 let savedCourse   = [];
-let settings      = { showAlert: true, autoFeedback: false, highlight: true };
+let settings      = { showAlert: true, highlight: true };
 
 // ═══════════════════════════════════════════════════════════════
 //  DOM refs
 // ═══════════════════════════════════════════════════════════════
 
-const avgSlider   = document.getElementById("avgSlider");
-const ratingVal   = document.getElementById("ratingVal");
-const starDisplay = document.getElementById("starDisplay");
-const presetBtns  = document.querySelectorAll(".preset-btn");
-const fillBtn     = document.getElementById("fillBtn");
-
-const teacherFeedback  = document.getElementById("teacherFeedback");
-const courseFeedback   = document.getElementById("courseFeedback");
-const genTeacher       = document.getElementById("genTeacher");
-const genCourse        = document.getElementById("genCourse");
-const saveTeacher      = document.getElementById("saveTeacher");
-const saveCourse       = document.getElementById("saveCourse");
-const fillTeacherBtn   = document.getElementById("fillTeacherBtn");
-const fillCourseBtn    = document.getElementById("fillCourseBtn");
-const clearTeacher     = document.getElementById("clearTeacher");
-const clearCourse      = document.getElementById("clearCourse");
-const fillBothBtn      = document.getElementById("fillBothBtn");
-
+const avgSlider      = document.getElementById("avgSlider");
+const ratingVal      = document.getElementById("ratingVal");
+const starDisplay    = document.getElementById("starDisplay");
+const presetBtns     = document.querySelectorAll(".preset-btn");
+const fillBtn        = document.getElementById("fillBtn");
+const teacherFeedback= document.getElementById("teacherFeedback");
+const courseFeedback = document.getElementById("courseFeedback");
+const genTeacher     = document.getElementById("genTeacher");
+const genCourse      = document.getElementById("genCourse");
+const saveTeacher    = document.getElementById("saveTeacher");
+const saveCourse     = document.getElementById("saveCourse");
+const clearTeacher   = document.getElementById("clearTeacher");
+const clearCourse    = document.getElementById("clearCourse");
 const savedTeacherList = document.getElementById("savedTeacherList");
 const savedCourseList  = document.getElementById("savedCourseList");
+const settingAlert     = document.getElementById("settingAlert");
+const settingHighlight = document.getElementById("settingHighlight");
 
-const settingAlert        = document.getElementById("settingAlert");
-const settingAutoFeedback = document.getElementById("settingAutoFeedback");
-const settingHighlight    = document.getElementById("settingHighlight");
+// ═══════════════════════════════════════════════════════════════
+//  Custom Modal
+// ═══════════════════════════════════════════════════════════════
 
-const toast    = document.getElementById("toast");
-const toastMsg = document.getElementById("toastMsg");
-const toastIcon= document.getElementById("toastIcon");
+const modalOverlay  = document.getElementById("modalOverlay");
+const modalIconWrap = document.getElementById("modalIconWrap");
+const modalIconChar = document.getElementById("modalIconChar");
+const modalTitle    = document.getElementById("modalTitle");
+const modalStatRow  = document.getElementById("modalStatRow");
+const modalBody     = document.getElementById("modalBody");
+const modalActions  = document.getElementById("modalActions");
+
+/**
+ * showModal({
+ *   type:    "success" | "error" | "warn" | "info"
+ *   icon:    text/symbol inside circle
+ *   title:   heading
+ *   body:    html string
+ *   stats:   [{ val, lbl }, ...]   optional stat boxes
+ *   buttons: [{ label, style:"primary"|"secondary"|"danger", onClick }]
+ * })
+ */
+function showModal({ type = "info", icon = "i", title = "", body = "", stats = [], buttons = [] }) {
+  modalIconWrap.className = `modal-icon-wrap ${type}`;
+  modalIconChar.textContent = icon;
+  modalTitle.textContent    = title;
+  modalBody.innerHTML       = body;
+
+  // Stats row
+  if (stats.length) {
+    modalStatRow.innerHTML = `<div class="stat-row">${
+      stats.map(s => `<div class="stat-box"><div class="stat-val">${s.val}</div><div class="stat-lbl">${s.lbl}</div></div>`).join("")
+    }</div>`;
+  } else {
+    modalStatRow.innerHTML = "";
+  }
+
+  // Buttons
+  modalActions.innerHTML = "";
+  buttons.forEach(b => {
+    const btn = document.createElement("button");
+    btn.className = `modal-btn ${b.style || "primary"}`;
+    btn.textContent = b.label;
+    btn.addEventListener("click", () => {
+      closeModal();
+      if (b.onClick) b.onClick();
+    });
+    modalActions.appendChild(btn);
+  });
+
+  modalOverlay.classList.add("show");
+}
+
+function closeModal() {
+  modalOverlay.classList.remove("show");
+}
+
+// Close on overlay background click
+modalOverlay.addEventListener("click", e => {
+  if (e.target === modalOverlay) closeModal();
+});
 
 // ═══════════════════════════════════════════════════════════════
 //  Toast
 // ═══════════════════════════════════════════════════════════════
 
+const toast    = document.getElementById("toast");
+const toastIcon= document.getElementById("toastIcon");
+const toastMsg = document.getElementById("toastMsg");
 let toastTimer;
-function showToast(msg, type = "info", duration = 2800) {
-  const icons = { success: "Done", error: "Error", info: "Info" };
-  toastIcon.textContent = icons[type] || "Info";
+
+function showToast(msg, type = "info", duration = 2600) {
+  const icons = { success: "✓", error: "✕", info: "i" };
+  toastIcon.textContent = icons[type] || "i";
   toastMsg.textContent  = msg;
   toast.className = `toast show ${type}`;
   clearTimeout(toastTimer);
@@ -219,32 +270,24 @@ function showToast(msg, type = "info", duration = 2800) {
 function updateRatingUI(val) {
   currentRating = parseFloat(val);
   ratingVal.textContent = currentRating.toFixed(1);
-
   const pct = ((currentRating - 1) / 4) * 100;
   avgSlider.style.setProperty("--pct", pct + "%");
-
   starDisplay.querySelectorAll(".star").forEach((s, i) => {
     const sv = i + 1;
     s.classList.remove("filled", "half");
-    if (currentRating >= sv)       s.classList.add("filled");
+    if      (currentRating >= sv)       s.classList.add("filled");
     else if (currentRating >= sv - 0.5) s.classList.add("half");
   });
-
-  presetBtns.forEach(b =>
-    b.classList.toggle("active", parseFloat(b.dataset.val) === currentRating)
-  );
+  presetBtns.forEach(b => b.classList.toggle("active", parseFloat(b.dataset.val) === currentRating));
 }
 
 avgSlider.addEventListener("input", e => updateRatingUI(e.target.value));
-
 starDisplay.querySelectorAll(".star").forEach(s =>
   s.addEventListener("click", () => { avgSlider.value = s.dataset.val; updateRatingUI(s.dataset.val); })
 );
-
 presetBtns.forEach(b =>
   b.addEventListener("click", () => { avgSlider.value = b.dataset.val; updateRatingUI(b.dataset.val); })
 );
-
 updateRatingUI(4.5);
 
 // ═══════════════════════════════════════════════════════════════
@@ -271,7 +314,6 @@ document.getElementById("teacherToneRow").querySelectorAll(".tone-btn").forEach(
     teacherTone = btn.dataset.tone;
   });
 });
-
 document.getElementById("courseToneRow").querySelectorAll(".tone-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     document.getElementById("courseToneRow").querySelectorAll(".tone-btn").forEach(b => b.classList.remove("active"));
@@ -281,16 +323,16 @@ document.getElementById("courseToneRow").querySelectorAll(".tone-btn").forEach(b
 });
 
 // ═══════════════════════════════════════════════════════════════
-//  Generate AI feedback
+//  AI Generate
 // ═══════════════════════════════════════════════════════════════
 
 function runGenerate(btn, textarea, bank, getTone) {
   btn.innerHTML = '<span class="spinner"></span>Generating…';
-  btn.disabled = true;
+  btn.disabled  = true;
   setTimeout(() => {
     textarea.value = pickFeedback(bank, getTone(), currentRating);
-    btn.innerHTML = "Generate";
-    btn.disabled = false;
+    btn.innerHTML  = "Generate";
+    btn.disabled   = false;
     showToast("AI feedback generated!", "success");
   }, 600);
 }
@@ -299,7 +341,7 @@ genTeacher.addEventListener("click", () => runGenerate(genTeacher, teacherFeedba
 genCourse.addEventListener("click",  () => runGenerate(genCourse,  courseFeedback,  COURSE_FEEDBACK,  () => courseTone));
 
 // ═══════════════════════════════════════════════════════════════
-//  Save / Render saved lists
+//  Save / Render saved
 // ═══════════════════════════════════════════════════════════════
 
 function persist() {
@@ -308,25 +350,27 @@ function persist() {
 
 function renderList(listEl, items, onSelect) {
   listEl.innerHTML = "";
-  if (items.length === 0) {
+  if (!items.length) {
     listEl.innerHTML = `<div class="empty-msg">Nothing saved yet.</div>`;
     return;
   }
   items.forEach((fb, i) => {
     const item = document.createElement("div");
-    item.className = "saved-item";
-    item.textContent = fb.length > 88 ? fb.slice(0, 88) + "…" : fb;
+    item.className   = "saved-item";
+    item.textContent = fb.length > 85 ? fb.slice(0, 85) + "…" : fb;
     item.title = fb;
-    item.addEventListener("click", () => { onSelect(fb, i); renderList(listEl, items, onSelect); });
-
+    item.addEventListener("click", () => {
+      onSelect(fb);
+      showToast("Loaded into editor.", "info");
+    });
     const del = document.createElement("button");
-    del.className = "saved-item-del";
+    del.className   = "saved-item-del";
     del.textContent = "×";
     del.addEventListener("click", e => {
       e.stopPropagation();
       items.splice(i, 1);
       persist();
-      renderList(listEl, items, onSelect);
+      renderBoth();
       showToast("Deleted.", "info");
     });
     item.appendChild(del);
@@ -335,19 +379,17 @@ function renderList(listEl, items, onSelect) {
 }
 
 function renderBoth() {
-  renderList(savedTeacherList, savedTeacher, (fb) => { teacherFeedback.value = fb; });
-  renderList(savedCourseList,  savedCourse,  (fb) => { courseFeedback.value  = fb; });
+  renderList(savedTeacherList, savedTeacher, fb => { teacherFeedback.value = fb; });
+  renderList(savedCourseList,  savedCourse,  fb => { courseFeedback.value  = fb; });
 }
 
-// Save buttons
 saveTeacher.addEventListener("click", () => {
   const txt = teacherFeedback.value.trim();
   if (!txt) { showToast("Nothing to save!", "error"); return; }
   if (savedTeacher.includes(txt)) { showToast("Already saved.", "info"); return; }
   savedTeacher.unshift(txt);
   if (savedTeacher.length > 8) savedTeacher.pop();
-  persist();
-  renderBoth();
+  persist(); renderBoth();
   showToast("Teacher feedback saved!", "success");
 });
 
@@ -357,143 +399,107 @@ saveCourse.addEventListener("click", () => {
   if (savedCourse.includes(txt)) { showToast("Already saved.", "info"); return; }
   savedCourse.unshift(txt);
   if (savedCourse.length > 8) savedCourse.pop();
-  persist();
-  renderBoth();
+  persist(); renderBoth();
   showToast("Course feedback saved!", "success");
 });
 
-// Clear buttons
 clearTeacher.addEventListener("click", () => { teacherFeedback.value = ""; });
 clearCourse.addEventListener("click",  () => { courseFeedback.value  = ""; });
 
 // ═══════════════════════════════════════════════════════════════
-//  Core: inject content script if needed, then send message
+//  Send to tab (with auto-inject fallback)
 // ═══════════════════════════════════════════════════════════════
 
-async function getActiveTab() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  return tab;
-}
-
-/**
- * Ensures content script is injected then sends the message.
- * Falls back to scripting.executeScript for pages where
- * the content script declaration may not have fired yet.
- */
 async function sendToTab(payload) {
-  const tab = await getActiveTab();
-
-  // Guard: can't inject into chrome:// or edge:// pages
-  if (!tab.url || /^(chrome|edge|about|data):/.test(tab.url)) {
-    throw new Error("Cannot inject into this page type.");
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.url || /^(chrome|edge|about|data):/.test(tab.url)) {
+    throw new Error("restricted_page");
   }
 
-  // First, try a direct sendMessage
-  try {
-    const resp = await new Promise((resolve, reject) => {
-      chrome.tabs.sendMessage(tab.id, payload, (response) => {
-        if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
-        else resolve(response);
-      });
+  const send = () => new Promise((resolve, reject) => {
+    chrome.tabs.sendMessage(tab.id, payload, resp => {
+      if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+      else resolve(resp);
     });
-    return resp;
-  } catch (firstErr) {
-    // Content script not yet injected — inject it now then retry
-    try {
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ["content.js"],
-      });
-      // Small delay to let script initialise
-      await new Promise(r => setTimeout(r, 120));
-      const resp = await new Promise((resolve, reject) => {
-        chrome.tabs.sendMessage(tab.id, payload, (response) => {
-          if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
-          else resolve(response);
-        });
-      });
-      return resp;
-    } catch (secondErr) {
-      throw new Error("Page not reachable: " + secondErr.message);
-    }
+  });
+
+  try {
+    return await send();
+  } catch {
+    // Inject content script and retry once
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["content.js"] });
+    await new Promise(r => setTimeout(r, 130));
+    return await send();
   }
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  Fill feedbacks into page
-// ═══════════════════════════════════════════════════════════════
-
-fillTeacherBtn.addEventListener("click", async () => {
-  const txt = teacherFeedback.value.trim();
-  if (!txt) { showToast("No teacher feedback to fill.", "error"); return; }
-  fillTeacherBtn.disabled = true;
-  try {
-    await sendToTab({ action: "fillFeedback", target: "teacher", text: txt });
-    showToast("Teacher feedback filled!", "success");
-  } catch (e) {
-    showToast(e.message.includes("reachable") ? "Could not reach the page." : "Fill failed: " + e.message, "error");
-  } finally { fillTeacherBtn.disabled = false; }
-});
-
-fillCourseBtn.addEventListener("click", async () => {
-  const txt = courseFeedback.value.trim();
-  if (!txt) { showToast("No course feedback to fill.", "error"); return; }
-  fillCourseBtn.disabled = true;
-  try {
-    await sendToTab({ action: "fillFeedback", target: "course", text: txt });
-    showToast("Course feedback filled!", "success");
-  } catch (e) {
-    showToast(e.message.includes("reachable") ? "Could not reach the page." : "Fill failed: " + e.message, "error");
-  } finally { fillCourseBtn.disabled = false; }
-});
-
-fillBothBtn.addEventListener("click", async () => {
-  const t = teacherFeedback.value.trim();
-  const c = courseFeedback.value.trim();
-  if (!t && !c) { showToast("Both feedback fields are empty.", "error"); return; }
-  fillBothBtn.disabled = true;
-  fillBothBtn.textContent = "Filling…";
-  try {
-    await sendToTab({ action: "fillFeedback", target: "both", teacherText: t, courseText: c });
-    showToast("Both feedbacks filled into form!", "success");
-  } catch (e) {
-    showToast(e.message.includes("reachable") ? "Could not reach the page." : "Fill failed: " + e.message, "error");
-  } finally {
-    fillBothBtn.disabled = false;
-    fillBothBtn.textContent = "Fill Both Feedbacks into Form";
-  }
-});
-
-// ═══════════════════════════════════════════════════════════════
-//  Auto-Fill Evaluation (ratings + optional feedbacks)
+//  MAIN FILL BUTTON — fills ratings + both feedbacks in one click
 // ═══════════════════════════════════════════════════════════════
 
 fillBtn.addEventListener("click", async () => {
   fillBtn.disabled = true;
   fillBtn.innerHTML = '<span class="spinner"></span>Filling…';
-  try {
-    const teacherText = (settings.autoFeedback && teacherFeedback.value.trim()) ? teacherFeedback.value.trim() : null;
-    const courseText  = (settings.autoFeedback && courseFeedback.value.trim())  ? courseFeedback.value.trim()  : null;
 
+  try {
     const resp = await sendToTab({
-      action: "fill",
-      avg: currentRating,
-      highlight: settings.highlight,
-      showAlert: settings.showAlert,
-      teacherText,
-      courseText,
+      action:      "fillAll",
+      avg:         currentRating,
+      highlight:   settings.highlight,
+      teacherText: teacherFeedback.value.trim() || null,
+      courseText:  courseFeedback.value.trim()  || null,
     });
 
-    if (resp && resp.ok) {
-      showToast(`Filled ${resp.filled} questions! Avg: ${currentRating.toFixed(1)} ★`, "success");
-    } else {
-      showToast(`Filled! Avg: ${currentRating.toFixed(1)} ★`, "success");
+    if (resp && resp.noRadios) {
+      // No evaluation form found on this page
+      showModal({
+        type:  "warn",
+        icon:  "!",
+        title: "No Evaluation Form Found",
+        body:  "Please navigate to your faculty evaluation form first, then click Fill again.",
+        buttons: [{ label: "Got it", style: "primary" }],
+      });
+      return;
     }
+
+    if (settings.showAlert && resp && resp.ok) {
+      showModal({
+        type:  "success",
+        icon:  "✓",
+        title: "Evaluation Filled!",
+        stats: [
+          { val: resp.filled,                 lbl: "Questions" },
+          { val: currentRating.toFixed(1) + " ★", lbl: "Average" },
+          { val: resp.textFilled,             lbl: "Text Fields" },
+        ],
+        body: "All ratings and feedback have been filled into the form successfully.",
+        buttons: [{ label: "Done", style: "primary" }],
+      });
+    } else {
+      showToast(`Filled! Avg: ${currentRating.toFixed(1)}`, "success");
+    }
+
   } catch (e) {
-    showToast(e.message.includes("reachable") ? "Could not reach the page. Make sure you're on the evaluation form." : e.message, "error");
+    if (e.message === "restricted_page") {
+      showModal({
+        type:  "error",
+        icon:  "✕",
+        title: "Cannot Access This Page",
+        body:  "This extension cannot run on Chrome internal pages. Please open your evaluation form in a normal tab.",
+        buttons: [{ label: "OK", style: "primary" }],
+      });
+    } else {
+      showModal({
+        type:  "warn",
+        icon:  "!",
+        title: "Please Select a Course",
+        body:  "No evaluation form was detected on this page.<br><br>Please navigate to your course evaluation form and try again.",
+        buttons: [{ label: "OK", style: "primary" }],
+      });
+    }
   } finally {
     fillBtn.disabled = false;
-    fillBtn.innerHTML = "Auto-Fill Evaluation";
+    fillBtn.innerHTML = "Fill Entire Evaluation";
   }
 });
 
@@ -501,24 +507,20 @@ fillBtn.addEventListener("click", async () => {
 //  Settings
 // ═══════════════════════════════════════════════════════════════
 
-settingAlert.addEventListener("change",        () => { settings.showAlert       = settingAlert.checked;        persist(); });
-settingAutoFeedback.addEventListener("change", () => { settings.autoFeedback    = settingAutoFeedback.checked; persist(); });
-settingHighlight.addEventListener("change",    () => { settings.highlight       = settingHighlight.checked;    persist(); });
+settingAlert.addEventListener("change",     () => { settings.showAlert   = settingAlert.checked;     persist(); });
+settingHighlight.addEventListener("change", () => { settings.highlight   = settingHighlight.checked; persist(); });
 
 // ═══════════════════════════════════════════════════════════════
 //  Load persisted data
 // ═══════════════════════════════════════════════════════════════
 
 if (chrome?.storage?.local) {
-  chrome.storage.local.get(["savedTeacher", "savedCourse", "settings"], (data) => {
+  chrome.storage.local.get(["savedTeacher", "savedCourse", "settings"], data => {
     if (data.savedTeacher) savedTeacher = data.savedTeacher;
     if (data.savedCourse)  savedCourse  = data.savedCourse;
     if (data.settings)     settings     = { ...settings, ...data.settings };
-
-    settingAlert.checked        = settings.showAlert;
-    settingAutoFeedback.checked = settings.autoFeedback;
-    settingHighlight.checked    = settings.highlight;
-
+    settingAlert.checked     = settings.showAlert;
+    settingHighlight.checked = settings.highlight;
     renderBoth();
   });
 } else {

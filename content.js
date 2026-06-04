@@ -1,22 +1,45 @@
-// ── Faculty Eval Pro — content script v2.2 ───────────────────────────────────
+// ── Faculty Eval Pro — content script v3.0 ───────────────────────────────────
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
-  if (msg.action === "fill") {
+  // ── Single action: fill ratings + both feedbacks at once ─────────────────
+  if (msg.action === "fillAll") {
     try {
-      const result = doFillRatings(msg);
-      if (msg.teacherText) doFillTextarea("teacher", msg.teacherText);
-      if (msg.courseText)  doFillTextarea("course",  msg.courseText);
-      if (msg.showAlert !== false) {
-        alert(`✅ Evaluation filled!\nQuestions: ${result.filled}  |  Avg: ${result.avg} ★`);
+      const radios = document.querySelectorAll('input[type="radio"]');
+
+      // No radio buttons on page → tell popup to show "select a course" modal
+      if (radios.length === 0) {
+        sendResponse({ ok: false, noRadios: true });
+        return true;
       }
-      sendResponse({ ok: true, filled: result.filled });
+
+      const ratingResult = doFillRatings(msg.avg, msg.highlight);
+      let textFilled = 0;
+      if (msg.teacherText) textFilled += doFillTextarea("teacher", msg.teacherText);
+      if (msg.courseText)  textFilled += doFillTextarea("course",  msg.courseText);
+
+      sendResponse({ ok: true, filled: ratingResult.filled, textFilled, avg: ratingResult.avg });
     } catch (e) {
       sendResponse({ ok: false, error: e.message });
     }
     return true;
   }
 
+  // ── Legacy: fill ratings only ────────────────────────────────────────────
+  if (msg.action === "fill") {
+    try {
+      const radios = document.querySelectorAll('input[type="radio"]');
+      if (radios.length === 0) { sendResponse({ ok: false, noRadios: true }); return true; }
+
+      const result = doFillRatings(msg.avg, msg.highlight !== false);
+      if (msg.teacherText) doFillTextarea("teacher", msg.teacherText);
+      if (msg.courseText)  doFillTextarea("course",  msg.courseText);
+      sendResponse({ ok: true, filled: result.filled });
+    } catch (e) { sendResponse({ ok: false, error: e.message }); }
+    return true;
+  }
+
+  // ── Legacy: fill feedback text areas only ────────────────────────────────
   if (msg.action === "fillFeedback") {
     try {
       let count = 0;
@@ -27,19 +50,17 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         count = doFillTextarea(msg.target, msg.text);
       }
       sendResponse({ ok: true, filled: count });
-    } catch (e) {
-      sendResponse({ ok: false, error: e.message });
-    }
+    } catch (e) { sendResponse({ ok: false, error: e.message }); }
     return true;
   }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Fill radio buttons
+//  Fill radio buttons to match target average
 // ─────────────────────────────────────────────────────────────────────────────
-function doFillRatings(msg) {
-  const avg       = Math.max(1, Math.min(5, parseFloat(msg.avg) || 5));
-  const highlight = msg.highlight !== false;
+function doFillRatings(avgRaw, highlight) {
+  const avg  = Math.max(1, Math.min(5, parseFloat(avgRaw) || 5));
+  const hl   = highlight !== false;
 
   const groups = {};
   document.querySelectorAll('input[type="radio"]').forEach(r => {
@@ -48,22 +69,17 @@ function doFillRatings(msg) {
     groups[key].push(r);
   });
 
-  const names = Object.keys(groups);
-  const total = names.length;
-  let filled  = 0;
+  const names  = Object.keys(groups);
+  const total  = names.length;
+  let   filled = 0;
 
   names.forEach((name, idx) => {
     const radios     = groups[name];
     const fractional = avg - Math.floor(avg);
-    let rating;
+    const rating     = (fractional > 0 && total > 1)
+      ? (idx < Math.round(total * fractional) ? Math.ceil(avg) : Math.floor(avg))
+      : Math.round(avg);
 
-    if (fractional > 0 && total > 1) {
-      rating = (idx < Math.round(total * fractional)) ? Math.ceil(avg) : Math.floor(avg);
-    } else {
-      rating = Math.round(avg);
-    }
-
-    // Try exact value match first, then closest
     let target = radios.find(r => String(r.value).trim() === String(rating));
     if (!target) {
       target = [...radios].sort((a, b) =>
@@ -76,8 +92,7 @@ function doFillRatings(msg) {
       target.checked = true;
       target.dispatchEvent(new Event("change", { bubbles: true }));
       filled++;
-
-      if (highlight && target.parentElement) {
+      if (hl && target.parentElement) {
         const el  = target.parentElement;
         const old = el.style.cssText;
         el.style.outline      = "2px solid #6366f1";
@@ -91,59 +106,33 @@ function doFillRatings(msg) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Fill a specific textarea (teacher or course)
-//  Matching priority:
-//    1. placeholder keyword match  (most reliable for this form)
-//    2. label text near the textarea
-//    3. positional fallback (1st = teacher, 2nd = course)
+//  Fill a specific textarea — teacher or course
+//  Priority: placeholder keyword → nearby label → positional fallback
 // ─────────────────────────────────────────────────────────────────────────────
 function doFillTextarea(target, text) {
-  // Gather ALL textareas including those inside iframes if same-origin
-  let textareas = [...document.querySelectorAll("textarea")];
-
-  // Also try contenteditable
-  let contentEditables = [...document.querySelectorAll('[contenteditable="true"]')];
-
-  // Try to find by placeholder keyword
-  let el = null;
+  const all     = [...document.querySelectorAll("textarea")];
+  const visible = all.filter(isVisible);
+  let   el      = null;
 
   if (target === "teacher") {
-    el = textareas.find(t =>
-      /teacher/i.test(t.placeholder)    ||
-      /instructor/i.test(t.placeholder) ||
-      /faculty/i.test(t.placeholder)    ||
-      /professor/i.test(t.placeholder)
-    );
-    // Try label match if no placeholder match
-    if (!el) el = findByNearbyLabel(textareas, /teacher|instructor|faculty|professor/i);
-    // Positional fallback: first visible textarea
-    if (!el) el = textareas.find(isVisible) || textareas[0];
-
-  } else if (target === "course") {
-    el = textareas.find(t =>
-      /course/i.test(t.placeholder)   ||
-      /content/i.test(t.placeholder)  ||
-      /subject/i.test(t.placeholder)  ||
-      /module/i.test(t.placeholder)
-    );
-    if (!el) el = findByNearbyLabel(textareas, /course|content|subject|module/i);
-    // Positional fallback: second visible textarea, else first
-    const visible = textareas.filter(isVisible);
-    if (!el) el = visible[1] || visible[0] || textareas[1] || textareas[0];
+    el = visible.find(t => /teacher|instructor|faculty|professor/i.test(t.placeholder));
+    if (!el) el = findByNearbyLabel(visible, /teacher|instructor|faculty|professor/i);
+    if (!el) el = visible[0];
+  } else {
+    el = visible.find(t => /course|content|subject|module/i.test(t.placeholder));
+    if (!el) el = findByNearbyLabel(visible, /course|content|subject|module/i);
+    if (!el) el = visible[1] || visible[0];
   }
 
+  // Fallback: contenteditable
   if (!el) {
-    // Last resort: try contenteditable
-    el = contentEditables[target === "teacher" ? 0 : 1] || contentEditables[0];
-    if (el) {
-      setNativeValue(el, text, true);
-      pulse(el);
-      return 1;
-    }
+    const ce = [...document.querySelectorAll('[contenteditable="true"]')].filter(isVisible);
+    el = ce[target === "teacher" ? 0 : 1] || ce[0];
+    if (el) { setNative(el, text, true); pulse(el); return 1; }
     return 0;
   }
 
-  setNativeValue(el, text, false);
+  setNative(el, text, false);
   pulse(el);
   return 1;
 }
@@ -156,31 +145,27 @@ function isVisible(el) {
   return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
 }
 
-/** Walk up the DOM to find a label/heading near the textarea */
-function findByNearbyLabel(textareas, pattern) {
-  for (const ta of textareas) {
-    // Check associated <label> via id
+function findByNearbyLabel(list, pattern) {
+  for (const ta of list) {
     if (ta.id) {
-      const label = document.querySelector(`label[for="${ta.id}"]`);
-      if (label && pattern.test(label.textContent)) return ta;
+      const lbl = document.querySelector(`label[for="${ta.id}"]`);
+      if (lbl && pattern.test(lbl.textContent)) return ta;
     }
-    // Check parent chain up to 4 levels for label/div text
     let node = ta.parentElement;
     for (let i = 0; i < 4 && node; i++) {
-      if (pattern.test(node.textContent)) return ta;
+      // Only match on text of immediate children, not full subtree, to avoid false positives
+      const direct = [...node.childNodes]
+        .filter(n => n.nodeType === 3 || (n.nodeType === 1 && n.tagName !== "TEXTAREA"))
+        .map(n => n.textContent).join(" ");
+      if (pattern.test(direct)) return ta;
       node = node.parentElement;
     }
   }
   return null;
 }
 
-/**
- * Set value in a way that works for:
- *  - Plain HTML forms
- *  - React controlled inputs (uses nativeInputValueSetter)
- *  - Angular / other frameworks (input + change events)
- */
-function setNativeValue(el, value, isContentEditable) {
+// Works on plain HTML, React, Angular, Vue
+function setNative(el, value, isContentEditable) {
   if (isContentEditable) {
     el.focus();
     el.textContent = value;
@@ -188,25 +173,12 @@ function setNativeValue(el, value, isContentEditable) {
     el.dispatchEvent(new Event("change", { bubbles: true }));
     return;
   }
-
   el.focus();
-
-  // React override
-  const nativeSetter = Object.getOwnPropertyDescriptor(
-    window.HTMLTextAreaElement.prototype, "value"
-  )?.set;
-
-  if (nativeSetter) {
-    nativeSetter.call(el, value);
-  } else {
-    el.value = value;
-  }
-
-  // Fire all relevant events so React/Angular/Vue pick up the change
-  el.dispatchEvent(new Event("input",  { bubbles: true }));
-  el.dispatchEvent(new Event("change", { bubbles: true }));
+  const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
+  if (setter) setter.call(el, value); else el.value = value;
+  el.dispatchEvent(new Event("input",   { bubbles: true }));
+  el.dispatchEvent(new Event("change",  { bubbles: true }));
   el.dispatchEvent(new KeyboardEvent("keydown",  { bubbles: true }));
-  el.dispatchEvent(new KeyboardEvent("keypress", { bubbles: true }));
   el.dispatchEvent(new KeyboardEvent("keyup",    { bubbles: true }));
   el.blur();
 }
@@ -214,8 +186,7 @@ function setNativeValue(el, value, isContentEditable) {
 function pulse(el) {
   if (!el) return;
   const old = el.style.cssText;
-  el.style.outline      = "2px solid #8b5cf6";
+  el.style.outline      = "2px solid #6366f1";
   el.style.borderRadius = "6px";
-  el.style.transition   = "outline 0.3s";
   setTimeout(() => { el.style.cssText = old; }, 2000);
 }
