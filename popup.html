@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Faculty Eval Pro</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      width: 360px;
+      background: #f5f6fa;
+      color: #1e293b;
+      overflow-x: hidden;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      padding: 16px 20px 13px;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -28px; right: -28px;
+      width: 90px; height: 90px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 50%;
+    }
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: -20px; left: 30px;
+      width: 60px; height: 60px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 50%;
+    }
+    .header-title { font-size: 16px; font-weight: 700; color: #fff; letter-spacing: 0.3px; }
+    .header-sub   { font-size: 11px; color: rgba(255,255,255,0.78); margin-top: 2px; }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 9px 4px;
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      color: #6366f1;
+      border-bottom-color: #6366f1;
+      background: rgba(99,102,241,0.05);
+    }
+    .tab-btn:hover:not(.active) { color: #475569; background: #f8fafc; }
+
+    /* ── Panels ── */
+    .tab-panel { display: none; padding: 14px 16px 16px; }
+    .tab-panel.active { display: block; }
+
+    /* ── Labels ── */
+    .section-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #6366f1;
+      margin-bottom: 8px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 13px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    /* ── Stars + Slider ── */
+    .star-display {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 11px;
+    }
+    .stars { display: flex; gap: 3px; }
+    .star {
+      font-size: 20px;
+      color: #cbd5e1;
+      cursor: pointer;
+      transition: color 0.15s, transform 0.1s;
+      user-select: none;
+    }
+    .star.filled { color: #f59e0b; }
+    .star.half   { color: #f59e0b; filter: brightness(0.75); }
+    .star:hover  { transform: scale(1.2); }
+    .rating-value { font-size: 24px; font-weight: 800; color: #6366f1; margin-left: auto; }
+
+    input[type=range] {
+      width: 100%;
+      -webkit-appearance: none;
+      height: 5px;
+      border-radius: 3px;
+      background: linear-gradient(to right, #6366f1 0%, #6366f1 var(--pct,70%), #e2e8f0 var(--pct,70%), #e2e8f0 100%);
+      outline: none;
+      cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.2);
+      cursor: pointer;
+    }
+    .slider-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+    .presets {
+      display: flex;
+      gap: 5px;
+      margin-top: 10px;
+    }
+    .preset-btn {
+      flex: 1;
+      padding: 5px 3px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      background: #f8fafc;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s;
+      text-align: center;
+    }
+    .preset-btn:hover, .preset-btn.active {
+      border-color: #6366f1;
+      background: rgba(99,102,241,0.08);
+      color: #6366f1;
+    }
+
+    /* ── Feedback blocks ── */
+    .feedback-block {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .feedback-block-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .feedback-block-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #1e293b;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .feedback-block-title .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #6366f1;
+    }
+
+    .ai-badge {
+      font-size: 9px;
+      font-weight: 700;
+      background: #6366f1;
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 20px;
+      letter-spacing: 0.3px;
+    }
+
+    /* Tone row */
+    .tone-row {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .tone-btn {
+      padding: 3px 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      background: #f8fafc;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+    .tone-btn:hover, .tone-btn.active {
+      border-color: #6366f1;
+      background: rgba(99,102,241,0.08);
+      color: #6366f1;
+    }
+    .tone-btn[data-tone="poor"]:hover,
+    .tone-btn[data-tone="poor"].active {
+      border-color: #ef4444;
+      background: rgba(239,68,68,0.07);
+      color: #dc2626;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 72px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 7px;
+      color: #1e293b;
+      font-size: 12px;
+      padding: 9px;
+      resize: vertical;
+      outline: none;
+      line-height: 1.5;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    textarea:focus  { border-color: #6366f1; background: #fff; }
+    textarea::placeholder { color: #cbd5e1; }
+
+    .textarea-actions {
+      display: flex;
+      gap: 5px;
+      margin-top: 7px;
+    }
+    .btn-ghost {
+      flex: 1;
+      padding: 6px 4px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 7px;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .btn-ghost:hover {
+      border-color: #6366f1;
+      color: #6366f1;
+      background: rgba(99,102,241,0.06);
+    }
+    .btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Fill-both button */
+    .fill-feedback-all-btn {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 12px;
+      background: rgba(99,102,241,0.07);
+      border: 1px solid #c7d2fe;
+      border-radius: 8px;
+      color: #6366f1;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .fill-feedback-all-btn:hover {
+      background: rgba(99,102,241,0.13);
+      border-color: #6366f1;
+    }
+
+    /* ── Saved section ── */
+    .saved-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      max-height: 120px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+    .saved-list::-webkit-scrollbar { width: 3px; }
+    .saved-list::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
+
+    .saved-item {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 7px 28px 7px 9px;
+      font-size: 11px;
+      color: #475569;
+      cursor: pointer;
+      transition: all 0.15s;
+      line-height: 1.4;
+      position: relative;
+    }
+    .saved-item:hover { border-color: #6366f1; color: #6366f1; background: rgba(99,102,241,0.05); }
+    .saved-item.sel   { border-color: #6366f1; color: #6366f1; background: rgba(99,102,241,0.08); }
+    .saved-item-del {
+      position: absolute;
+      right: 5px; top: 50%;
+      transform: translateY(-50%);
+      background: none; border: none;
+      color: #cbd5e1; cursor: pointer;
+      font-size: 15px; line-height: 1;
+      padding: 2px 4px; border-radius: 3px;
+      transition: color 0.15s;
+    }
+    .saved-item-del:hover { color: #ef4444; }
+
+    /* ── Primary button ── */
+    .fill-btn {
+      width: 100%;
+      padding: 12px;
+      margin-top: 2px;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      border: none;
+      border-radius: 9px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+    }
+    .fill-btn:hover  { opacity: 0.92; transform: translateY(-1px); box-shadow: 0 6px 18px rgba(99,102,241,0.4); }
+    .fill-btn:active { transform: translateY(0); }
+    .fill-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 10px; left: 10px; right: 10px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 9px 13px;
+      font-size: 11px;
+      color: #475569;
+      display: none;
+      align-items: center;
+      gap: 7px;
+      z-index: 999;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      animation: slideUp 0.22s ease;
+    }
+    .toast.show    { display: flex; }
+    .toast.success { border-color: #22c55e; color: #16a34a; }
+    .toast.error   { border-color: #ef4444; color: #dc2626; }
+    .toast.info    { border-color: #6366f1; color: #6366f1; }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Settings ── */
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .setting-row:last-child { border-bottom: none; }
+    .setting-label { font-size: 12px; color: #334155; }
+    .setting-desc  { font-size: 10px; color: #94a3b8; margin-top: 1px; }
+
+    .toggle { position: relative; width: 36px; height: 20px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; inset: 0;
+      background: #e2e8f0; border-radius: 20px; cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 14px; height: 14px;
+      left: 3px; top: 3px;
+      background: #fff; border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      transition: transform 0.2s;
+    }
+    .toggle input:checked + .toggle-slider { background: #6366f1; }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
+
+    /* ── Misc ── */
+    .spinner {
+      display: inline-block;
+      width: 11px; height: 11px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    hr.divider { border: none; border-top: 1px solid #e2e8f0; margin: 10px 0; }
+
+    .empty-msg { font-size: 11px; color: #cbd5e1; text-align: center; padding: 14px 0; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-title">Faculty Eval Pro</div>
+  <div class="header-sub">Smart auto-fill for evaluation forms</div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab-btn active" data-tab="rating">Rating</button>
+  <button class="tab-btn" data-tab="feedback">Feedback</button>
+  <button class="tab-btn" data-tab="saved">Saved</button>
+  <button class="tab-btn" data-tab="settings">Settings</button>
+</div>
+
+<!-- ══════════ TAB: Rating ══════════ -->
+<div class="tab-panel active" id="tab-rating">
+  <div class="section-label">Target Rating</div>
+  <div class="card">
+    <div class="star-display">
+      <div class="stars" id="starDisplay">
+        <span class="star" data-val="1">★</span>
+        <span class="star" data-val="2">★</span>
+        <span class="star" data-val="3">★</span>
+        <span class="star" data-val="4">★</span>
+        <span class="star" data-val="5">★</span>
+      </div>
+      <div class="rating-value" id="ratingVal">4.5</div>
+    </div>
+    <input type="range" id="avgSlider" min="1" max="5" step="0.1" value="4.5">
+    <div class="slider-labels">
+      <span>1 – Poor</span><span>3 – Average</span><span>5 – Excellent</span>
+    </div>
+    <div class="presets" id="presets">
+      <button class="preset-btn" data-val="2">Poor</button>
+      <button class="preset-btn" data-val="3">Average</button>
+      <button class="preset-btn" data-val="4">Good</button>
+      <button class="preset-btn active" data-val="4.5">Great</button>
+      <button class="preset-btn" data-val="5">Best</button>
+    </div>
+  </div>
+  <button class="fill-btn" id="fillBtn">Auto-Fill Evaluation</button>
+</div>
+
+<!-- ══════════ TAB: Feedback ══════════ -->
+<div class="tab-panel" id="tab-feedback">
+
+  <!-- Teacher Feedback block -->
+  <div class="feedback-block">
+    <div class="feedback-block-header">
+      <div class="feedback-block-title">
+        <span class="dot"></span> Teacher Feedback
+      </div>
+      <span class="ai-badge">AI</span>
+    </div>
+
+    <div class="tone-row" id="teacherToneRow">
+      <button class="tone-btn" data-tone="poor">Poor</button>
+      <button class="tone-btn active" data-tone="positive">Positive</button>
+      <button class="tone-btn" data-tone="neutral">Neutral</button>
+      <button class="tone-btn" data-tone="constructive">Constructive</button>
+      <button class="tone-btn" data-tone="formal">Formal</button>
+    </div>
+
+    <textarea id="teacherFeedback" placeholder="Feedback for Teacher…"></textarea>
+
+    <div class="textarea-actions">
+      <button class="btn-ghost" id="genTeacher">Generate</button>
+      <button class="btn-ghost" id="saveTeacher">Save</button>
+      <button class="btn-ghost" id="fillTeacherBtn">Fill</button>
+      <button class="btn-ghost" id="clearTeacher">Clear</button>
+    </div>
+  </div>
+
+  <!-- Course Feedback block -->
+  <div class="feedback-block">
+    <div class="feedback-block-header">
+      <div class="feedback-block-title">
+        <span class="dot" style="background:#3b82f6"></span> Course Feedback
+      </div>
+      <span class="ai-badge" style="background:#3b82f6">AI</span>
+    </div>
+
+    <div class="tone-row" id="courseToneRow">
+      <button class="tone-btn" data-tone="poor">Poor</button>
+      <button class="tone-btn active" data-tone="positive">Positive</button>
+      <button class="tone-btn" data-tone="neutral">Neutral</button>
+      <button class="tone-btn" data-tone="constructive">Constructive</button>
+      <button class="tone-btn" data-tone="formal">Formal</button>
+    </div>
+
+    <textarea id="courseFeedback" placeholder="Feedback for Course Content…"></textarea>
+
+    <div class="textarea-actions">
+      <button class="btn-ghost" id="genCourse">Generate</button>
+      <button class="btn-ghost" id="saveCourse">Save</button>
+      <button class="btn-ghost" id="fillCourseBtn">Fill</button>
+      <button class="btn-ghost" id="clearCourse">Clear</button>
+    </div>
+  </div>
+
+  <!-- Fill Both -->
+  <button class="fill-feedback-all-btn" id="fillBothBtn">
+    Fill Both Feedbacks into Form
+  </button>
+
+</div>
+
+<!-- ══════════ TAB: Saved ══════════ -->
+<div class="tab-panel" id="tab-saved">
+
+  <div class="section-label">Teacher Feedback</div>
+  <div class="saved-list" id="savedTeacherList">
+    <div class="empty-msg">No saved teacher feedback yet.</div>
+  </div>
+
+  <hr class="divider" style="margin:12px 0">
+
+  <div class="section-label">Course Feedback</div>
+  <div class="saved-list" id="savedCourseList">
+    <div class="empty-msg">No saved course feedback yet.</div>
+  </div>
+
+</div>
+
+<!-- ══════════ TAB: Settings ══════════ -->
+<div class="tab-panel" id="tab-settings">
+
+  <div class="section-label">Behavior</div>
+  <div class="card">
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">Show confirmation alert</div>
+        <div class="setting-desc">Display alert after ratings are filled</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="settingAlert" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">Auto-fill feedbacks on rate fill</div>
+        <div class="setting-desc">Include feedback text when clicking Auto-Fill</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="settingAutoFeedback">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">Highlight filled fields</div>
+        <div class="setting-desc">Blue glow on filled inputs</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="settingHighlight" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="section-label">About</div>
+  <div class="card">
+    <div class="setting-row">
+      <div class="setting-label">Version</div>
+      <div style="font-size:12px;color:#6366f1;font-weight:700;">2.2.0</div>
+    </div>
+    <div class="setting-row" style="border:none;">
+      <div class="setting-label">Extension</div>
+      <div style="font-size:11px;color:#94a3b8;">Faculty Eval Pro</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span id="toastIcon"></span>
+  <span id="toastMsg"></span>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>
