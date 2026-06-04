@@ -112,14 +112,6 @@ faculty-eval-pro/
 
 ---
 
-## Technical Notes
-
-- Built on **Chrome Manifest V3**
-- Uses `chrome.storage.local` for persistent feedback saving
-- Auto-injects content script if not yet loaded on the page
-- Textarea detection works via placeholder keyword matching with DOM label fallback
-- Supports React / Angular controlled inputs via native value setter override
-- Falls back to positional index if placeholder keywords are not found
 
 ---
 
@@ -136,45 +128,11 @@ faculty-eval-pro/
 
 ---
 
-## Publishing to Chrome Web Store
 
-1. Zip all 4 files (files must be at the root of the zip, not in a subfolder)
-2. Go to [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole)
-3. Pay the one-time **$5 developer registration fee**
-4. Upload the zip, fill in listing details, set price to **Free**
-5. Submit for review — approval takes 1–3 business days
-6. Share your public store link with anyone
 
----
-
-## Changelog
-
-### v2.2.0
-- Fixed fill not working on React/Angular-based LMS platforms
-- Added auto content script injection fallback
-- Added Poor tone for both Teacher and Course feedback
-- Switched to light theme UI
-- Removed all emojis for clean professional appearance
-
-### v2.1.0
-- Split feedback into separate Teacher and Course blocks
-- Added tone selector per feedback block
-- Added Saved tab for persisted feedbacks
-- Added Fill Both button
-
-### v2.0.0
-- Complete UI redesign with tab layout
-- Added AI feedback generation
-- Added rating slider with star display
-- Added settings panel with toggles
-
-### v1.0.0
-- Initial release — basic radio button auto-fill
-
----
 
 <div align="center">
 
-Made for students, by **A.Alvi**
+Made for students, by **students**
 
 </div>
