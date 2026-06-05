@@ -1,22 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Faculty Eval Pro",
-  "version": "2.2.0",
+  "version": "3.0.0",
   "description": "Smart auto-fill for faculty evaluation forms with AI-generated feedback.",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": ["<all_urls>"],
-  "icons": {
-    "16": "icon16.png",
-    "48": "icon48.png",
-    "128": "icon128.png"
-  },
   "action": {
-    "default_popup": "popup.html",
-    "default_icon": {
-      "16": "icon16.png",
-      "48": "icon48.png",
-      "128": "icon128.png"
-    }
+    "default_popup": "popup.html"
   },
   "content_scripts": [
     {
